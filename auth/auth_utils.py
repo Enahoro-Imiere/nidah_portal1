@@ -3,8 +3,7 @@ import psycopg2
 import os
 import bcrypt
 from psycopg2.extras import RealDictCursor
-from werkzeug.security import check_password_hash
-from database.db import get_connection  # use the connection from db.py
+from dotenv import load_dotenv
 
 def get_connection():
     return psycopg2.connect(
@@ -47,7 +46,7 @@ def authenticate_user(username, password):
     cur.execute("""
         SELECT id, full_name, username, password_hash, role
         FROM users
-        WHERE username = %s
+        WHERE LOWER(username) = %s
     """, (username,))
     
     user = cur.fetchone()
