@@ -619,40 +619,40 @@ def user_dashboard():
 
 
     # ================= PROGRAMS =================
-if menu_choice == "Programs":
+    if menu_choice == "Programs":
 
-    programs_list = ["Training", "Services"]
-    program_category = st.selectbox("Select Program Category", programs_list)
+         programs_list = ["Training", "Services"]
+         program_category = st.selectbox("Select Program Category", programs_list)
 
-    if program_category:
-        st.subheader(f"{program_category} Programs")
+         if program_category:
+             st.subheader(f"{program_category} Programs")
 
-        # Open connection
-        conn = get_connection()
-        cur = conn.cursor()
+             # Open connection
+             conn = get_connection()
+             cur = conn.cursor()
 
-        try:
-            # Fetch facility needs from PostgreSQL
-            cur.execute(
-                "SELECT facility_id, facility_name, need_id, need, number "
-                "FROM facility_needs WHERE program_type = %s",
-                (program_category,)
-            )
-            needs = cur.fetchall()
+             try:
+                 # Fetch facility needs from PostgreSQL
+                 cur.execute(
+                     "SELECT facility_id, facility_name, need_id, need, number "
+                     "FROM facility_needs WHERE program_type = %s",
+                     (program_category,)
+                 )
+                 needs = cur.fetchall()
 
-            if not needs:
-                st.info(f"No facilities found under {program_category}.")
-            else:
-                import pandas as pd
-                df = pd.DataFrame(
-                    needs,
-                    columns=["facility_id", "facility_name", "need_id", "need", "number"]
-                )
-                st.write(df)  # quick demo for presentation
+                 if not needs:
+                     st.info(f"No facilities found under {program_category}.")
+                 else:
+                     import pandas as pd
+                     df = pd.DataFrame(
+                         needs,
+                         columns=["facility_id", "facility_name", "need_id", "need", "number"]
+                     )
+                     st.write(df)  # quick demo for presentation
 
-        finally:
-            cur.close()
-            conn.close()
+             finally:
+                 cur.close()
+                 conn.close()
 
 
             
