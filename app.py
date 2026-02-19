@@ -12,7 +12,7 @@ from PIL import Image
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 
-from db import get_connection
+from database.db import get_connection
 
 
 st.set_page_config(page_title="NiDAH-P Portal", layout="wide")
