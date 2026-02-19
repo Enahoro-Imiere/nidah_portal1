@@ -5,10 +5,13 @@ import bcrypt
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
+
 def get_connection():
     return psycopg2.connect(
-        "postgresql://postgres.emriuutnqdvufycgiarf:Ena%40101%23oro@aws-1-eu-west-2.pooler.supabase.com:5432/postgres"
+        "postgresql://postgres.emriuutnqdvufycgiarf:Ena%40101%23oro@aws-1-eu-west-2.pooler.supabase.com:5432/postgres",
+        sslmode="require"
     )
+
 
 
 # ---------------- Facility Authentication ----------------
