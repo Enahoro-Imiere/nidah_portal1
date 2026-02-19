@@ -564,7 +564,7 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Pending'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        pending_facilities = cursor.fetchall()
+        pending_facilities = cur.fetchall()
 
         if not approved_interests and not pending_facilities:
             st.info("You have not engaged in any program yet.")
