@@ -12,13 +12,7 @@ from PIL import Image
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 
-
-def get_connection():
-    return psycopg2.connect(
-        "postgresql://postgres.emriuutnqdvufycgiarf:Ena%40101%23oro@aws-1-eu-west-2.pooler.supabase.com:5432/postgres",
-        sslmode="require"
-    )
-
+from db import get_connection
 
 
 st.set_page_config(page_title="NiDAH-P Portal", layout="wide")
@@ -625,155 +619,40 @@ def user_dashboard():
 
 
     # ================= PROGRAMS =================
-    if menu_choice == "Programs":
+if menu_choice == "Programs":
 
-        # Define program categories
-        programs_dict = ["Training", "Services"]
+    programs_list = ["Training", "Services"]
+    program_category = st.selectbox("Select Program Category", programs_list)
 
-        # Let user select category
-        program_category = st.selectbox("Select Program Category", programs_dict)
+    if program_category:
+        st.subheader(f"{program_category} Programs")
 
-        if program_category:
-            st.subheader(f"{program_category} Programs")
+        # Open connection
+        conn = get_connection()
+        cur = conn.cursor()
 
-            # Open DB connection
-            conn = get_connection()
-            cur = conn.cursor()
+        try:
+            # Fetch facility needs from PostgreSQL
+            cur.execute(
+                "SELECT facility_id, facility_name, need_id, need, number "
+                "FROM facility_needs WHERE program_type = %s",
+                (program_category,)
+            )
+            needs = cur.fetchall()
 
-            try:
-                # Get facility + needs filtered by Training or Services
-                needs = get_facility_needs_by_program_type(program_category)
+            if not needs:
+                st.info(f"No facilities found under {program_category}.")
+            else:
+                import pandas as pd
+                df = pd.DataFrame(
+                    needs,
+                    columns=["facility_id", "facility_name", "need_id", "need", "number"]
+                )
+                st.write(df)  # quick demo for presentation
 
-                if not needs:
-                    st.info(f"No facilities found under {program_category}.")
-                else:
-                    df = pd.DataFrame(
-                        needs,
-                        columns=["facility_id", "facility_name", "need_id", "need", "number"]
-                    )
-
-                    # STEP 1: show facilities first
-                    facilities = df[["facility_id", "facility_name"]].drop_duplicates()
-
-                    selected_facility_id = st.selectbox(
-                        "Select Facility",
-                        facilities["facility_id"],
-                        format_func=lambda x: facilities.loc[
-                            facilities["facility_id"] == x, "facility_name"
-                        ].values[0]
-                    )
-
-                    # STEP 2: show needs for selected facility
-                    facility_needs = df[df["facility_id"] == selected_facility_id]
-
-                    st.markdown("### Facility Needs")
-
-                    for _, row in facility_needs.iterrows():
-                        col1, col2 = st.columns([6, 2])
-
-                        with col1:
-                            st.write(f"• {row['need']} (Qty: {row['number']})")
-
-                        with col2:
-                            interest_key = f"interest_{st.session_state.user_id}_{row['need_id']}"
-
-                            # Check if user already expressed interest
-                            cur.execute("""
-                                SELECT id FROM user_interests
-                                WHERE user_id=%s AND need_id=%s
-                            """, (st.session_state.user_id, row['need_id']))
-                            existing = cur.fetchone()
-
-                            if existing:
-                                st.session_state[interest_key] = existing[0]
-
-                            if interest_key not in st.session_state:
-                                if st.button(
-                                    "Indicate Interest",
-                                    key=f"user_{st.session_state.user_id}_need_{row['need_id']}"
-                                ):
-                                    cur.execute("""
-                                        INSERT INTO user_interests (user_id, need_id, status)
-                                        VALUES (%s, %s, 'Pending')
-                                        RETURNING id
-                                    """, (st.session_state.user_id, row['need_id']))
-                                    st.session_state[interest_key] = cur.fetchone()[0]
-                                    conn.commit()
-                                    st.success("Interest recorded and awaiting approval")
-
-                            # --- Training Mode ---
-                            if interest_key in st.session_state and program_category == "Training":
-                                st.markdown("### Training Mode")
-                                TRAINING_MODES = ["Select one", "On-site (Physical)", "Virtual", "Hybrid"]
-                                training_mode = st.selectbox(
-                                    "How would you like to deliver this training?",
-                                    TRAINING_MODES,
-                                    key=f"training_mode_{interest_key}"
-                                )
-
-                                if st.button("Save Training Mode", key=f"save_training_{interest_key}"):
-                                    if training_mode == "Select one":
-                                        st.error("Please select a training mode.")
-                                    else:
-                                        cur.execute("""
-                                            UPDATE user_interests
-                                            SET training_mode=%s
-                                            WHERE id=%s
-                                        """, (training_mode, st.session_state[interest_key]))
-                                        conn.commit()
-                                        st.session_state[f"training_saved_{interest_key}"] = True
-                                        st.success("Training mode saved successfully ✅")
-
-                            # --- Duration & Type ---
-                            show_duration = (
-                                program_category != "Training"
-                                or st.session_state.get(f"training_saved_{interest_key}")
-                            )
-
-                            if show_duration:
-                                st.markdown("### Set Expected Duration and Type")
-                                start_date = st.date_input("Start Date", key=f"start_{interest_key}")
-                                end_date = st.date_input("End Date", key=f"end_{interest_key}")
-                                engagement_type = st.radio(
-                                    "Type of Engagement",
-                                    ["Short-term Service", "Sabbatical"],
-                                    key=f"type_{interest_key}"
-                                )
-
-                                if st.button("Save Duration", key=f"duration_{interest_key}"):
-                                    cur.execute("""
-                                        UPDATE user_interests
-                                        SET start_date=%s, end_date=%s, engagement_type=%s
-                                        WHERE id=%s
-                                    """, (start_date, end_date, engagement_type, st.session_state[interest_key]))
-                                    conn.commit()
-                                    st.session_state[f"duration_saved_{interest_key}"] = True
-                                    st.success("Duration and type saved successfully!")
-
-                            # --- Area of Interest ---
-                            if st.session_state.get(f"duration_saved_{interest_key}"):
-                                st.markdown("### Area of Interest")
-                                area_of_interest = st.text_area(
-                                    "Please describe your specific area of interest or expertise",
-                                    key=f"area_{interest_key}",
-                                    placeholder="e.g. Oncology nursing training, laparoscopic surgery mentoring…"
-                                )
-
-                                if st.button("Save Area of Interest", key=f"save_area_{interest_key}"):
-                                    if not area_of_interest.strip():
-                                        st.error("Please enter your area of interest before saving.")
-                                    else:
-                                        cur.execute("""
-                                            UPDATE user_interests
-                                            SET area_of_interest=%s
-                                            WHERE id=%s
-                                        """, (area_of_interest, st.session_state[interest_key]))
-                                        conn.commit()
-                                        st.success("Area of interest saved successfully ✅")
-
-            finally:
-                cur.close()
-                conn.close()
+        finally:
+            cur.close()
+            conn.close()
 
 
             

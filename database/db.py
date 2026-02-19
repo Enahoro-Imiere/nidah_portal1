@@ -7,9 +7,15 @@ from psycopg2.extras import RealDictCursor
 
 # ---------------- CONNECTION ----------------
 
+import psycopg2
+
 def get_connection():
     return psycopg2.connect(
-        "postgresql://postgres.emriuutnqdvufycgiarf:Ena%40101%23oro@aws-1-eu-west-2.pooler.supabase.com:5432/postgres",
+        host="aws-1-eu-west-2.pooler.supabase.com",
+        port=5432,
+        dbname="postgres",
+        user="postgres.emriuutnqdvufycgiarf",
+        password="Ena@101#oro",  # use your real password
         sslmode="require"
     )
 
